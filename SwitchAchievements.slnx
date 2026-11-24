@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SwitchAchievements.App/SwitchAchievements.App.csproj" />
+    <Project Path="src/SwitchAchievements.Core/SwitchAchievements.Core.csproj" />
+    <Project Path="src/SwitchAchievements.Longshot.Poc/SwitchAchievements.Longshot.Poc.csproj" />
+    <Project Path="src/SwitchAchievements.Longshot/SwitchAchievements.Longshot.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SwitchAchievements.Tests/SwitchAchievements.Tests.csproj" />
+  </Folder>
+</Solution>
