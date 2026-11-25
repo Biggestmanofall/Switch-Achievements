@@ -116,15 +116,25 @@ public class MonitoringServiceSessionTests
         await WaitForSessionAsync(service, s => s.Id is not null);
         var id = service.Session.Id;
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
+        // Observe the transient Reconnecting transition (subscribed before the disconnect).
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1);
 
-        integration.RaiseSnapshot(TestSnapshot.Create(fp, rupees: 6));
-        await WaitForSessionAsync(service, s => s.Latest?.Rupees == 6);
+            integration.RaiseSnapshot(TestSnapshot.Create(fp, rupees: 6));
+            await WaitForSessionAsync(service, s => s.Latest?.Rupees == 6);
 
-        Assert.Equal(id, service.Session.Id);
-        await service.StopAsync();
+            Assert.Equal(id, service.Session.Id);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -139,17 +149,29 @@ public class MonitoringServiceSessionTests
         await WaitForSessionAsync(service, s => s.Id is not null);
         var oldId = service.Session.Id;
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
+        // Arrange the restarted process before the disconnect: discovery does not run
+        // while Monitoring, so it is seen only after the disconnect — never too late for
+        // rediscovery, which would otherwise reconnect to the old process first.
         provider.Processes = new[] { Game(200) };
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1);
 
-        integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(200, StartUtc), rupees: 0));
-        await WaitForSessionAsync(service, s => s.Id is not null && s.Id != oldId);
+            integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(200, StartUtc), rupees: 0));
+            await WaitForSessionAsync(service, s => s.Id is not null && s.Id != oldId);
 
-        Assert.NotEqual(oldId, service.Session.Id);
-        Assert.Equal(200, service.Session.Latest!.SourceProcessId);
-        await service.StopAsync();
+            Assert.NotEqual(oldId, service.Session.Id);
+            Assert.Equal(200, service.Session.Latest!.SourceProcessId);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -164,16 +186,25 @@ public class MonitoringServiceSessionTests
         await WaitForSessionAsync(service, s => s.Id is not null);
         var oldId = service.Session.Id;
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        provider.Processes = new[] { Game(100, LaterStartUtc) }; // same PID, new start
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
+        provider.Processes = new[] { Game(100, LaterStartUtc) }; // same PID, new start — arranged before the disconnect
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1);
 
-        integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, LaterStartUtc), rupees: 0));
-        await WaitForSessionAsync(service, s => s.Id is not null && s.Id != oldId);
+            integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, LaterStartUtc), rupees: 0));
+            await WaitForSessionAsync(service, s => s.Id is not null && s.Id != oldId);
 
-        Assert.NotEqual(oldId, service.Session.Id);
-        await service.StopAsync();
+            Assert.NotEqual(oldId, service.Session.Id);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -186,12 +217,39 @@ public class MonitoringServiceSessionTests
 
         integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, StartUtc)));
         await WaitForSessionAsync(service, s => s.Id is not null);
+        var sessionBeforeDisconnect = service.Session.Id;
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
+        // Observe the transition itself rather than sampling the current state:
+        // with the process still present, Reconnecting lasts only until the next
+        // discovery passes (~20–40 ms), so a polling waiter can miss it entirely.
+        // StateChanged is raised on the monitoring loop after the session has been
+        // reconciled for the new state, so the session read in the handler is the
+        // one in effect at the moment of the transition.
+        var transitions = new System.Collections.Concurrent.ConcurrentQueue<MonitoringState>();
+        var reconnecting = new TaskCompletionSource<SessionId?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnStateChanged(MonitoringState state)
+        {
+            transitions.Enqueue(state);
+            if (state == MonitoringState.Reconnecting)
+                reconnecting.TrySetResult(service.Session.Id);
+        }
 
-        Assert.NotNull(service.Session.Id); // session retained across disconnect
-        await service.StopAsync();
+        // Subscribed before the disconnect, so the transition cannot be missed.
+        service.StateChanged += OnStateChanged;
+        try
+        {
+            integration.RaiseDisconnected();
+            var sessionAtReconnecting = await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(MonitoringState.Reconnecting, transitions.First()); // the disconnect's own transition
+            Assert.NotNull(sessionAtReconnecting);                           // session retained across disconnect
+            Assert.Equal(sessionBeforeDisconnect, sessionAtReconnecting);    // ...and it is the same session
+        }
+        finally
+        {
+            service.StateChanged -= OnStateChanged;
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -205,13 +263,24 @@ public class MonitoringServiceSessionTests
         integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, StartUtc)));
         await WaitForSessionAsync(service, s => s.Id is not null);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        provider.Processes = Array.Empty<GameProcessInfo>();
-        await WaitForStateAsync(service, MonitoringState.Searching);
+        provider.Processes = Array.Empty<GameProcessInfo>(); // the process is gone — arranged before the disconnect
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            Assert.NotNull(reconnecting.Session.Id); // still alive while reconnecting
+            var searching = await observer.WaitForAsync(MonitoringState.Searching, after: reconnecting.Index + 1);
 
-        Assert.Null(service.Session.Id); // confirmed gone -> ended
-        await service.StopAsync();
+            Assert.Null(searching.Session.Id); // confirmed gone -> ended
+            Assert.Null(service.Session.Id);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -225,13 +294,22 @@ public class MonitoringServiceSessionTests
         integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, StartUtc)));
         await WaitForSessionAsync(service, s => s.Id is not null);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        provider.Processes = new[] { Game(100), Game(200) };
-        await WaitForStateAsync(service, MonitoringState.Ambiguous);
+        provider.Processes = new[] { Game(100), Game(200) }; // arranged before the disconnect
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            await observer.WaitForAsync(MonitoringState.Ambiguous, after: reconnecting.Index + 1);
 
-        Assert.NotNull(service.Session.Id); // ambiguity does not end the session
-        await service.StopAsync();
+            Assert.NotNull(service.Session.Id); // ambiguity does not end the session
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -251,13 +329,24 @@ public class MonitoringServiceSessionTests
         integration.RaiseSnapshot(TestSnapshot.Create(new ProcessFingerprint(100, StartUtc)));
         await WaitForSessionAsync(service, s => s.Id is not null);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        failConnect = true;
-        await WaitForStateAsync(service, MonitoringState.Error);
+        failConnect = true; // armed before the disconnect: no connect runs while Monitoring
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            Assert.NotNull(reconnecting.Session.Id); // disconnected, not yet ended
+            var error = await observer.WaitForAsync(MonitoringState.Error, after: reconnecting.Index + 1);
 
-        Assert.Null(service.Session.Id); // fatal error ended the disconnected session
-        await service.StopAsync();
+            Assert.Null(error.Session.Id); // fatal error ended the disconnected session
+            Assert.Null(service.Session.Id);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -315,12 +404,21 @@ public class MonitoringServiceSessionTests
         await service.StartAsync();
         await WaitForStateAsync(service, MonitoringState.Monitoring);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        failOce = true;
-        await WaitForStateAsync(service, MonitoringState.Error);
+        failOce = true; // armed before the disconnect: no connect runs while Monitoring
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            await observer.WaitForAsync(MonitoringState.Error, after: reconnecting.Index + 1);
 
-        Assert.Equal(MonitoringState.Error, service.State);
-        await service.StopAsync();
+            Assert.Equal(MonitoringState.Error, service.State);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 }

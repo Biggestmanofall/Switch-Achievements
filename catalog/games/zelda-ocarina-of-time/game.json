@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "zelda-ocarina-of-time",
+  "displayName": "The Legend of Zelda: Ocarina of Time",
+  "platform": "switch2",
+  "identityMatchers": [
+    {
+      "integrationId": "longshot",
+      "identityFacts": {
+        "switch2.programId": "0400486024dec000"
+      },
+      "supportedBuilds": [
+        {
+          "facts": {
+            "switch2.mainBuildId": "e0f3ccfaf50065ae4ea01eb5aeb13b1a45da3348"
+          }
+        }
+      ]
+    }
+  ]
+}

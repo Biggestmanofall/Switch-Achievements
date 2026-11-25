@@ -67,4 +67,32 @@ public sealed class NormalizedSnapshot
     /// absent/unreadable).
     /// </summary>
     public IReadOnlyDictionary<string, long?>? Flags { get; init; }
+
+    /// <summary>
+    /// Returns a copy of this snapshot with <see cref="GameId"/> replaced and every
+    /// other property preserved. Used by the monitoring lifecycle to assign the
+    /// identified game (or <see cref="GameId.Unknown"/>) to a snapshot; a
+    /// <see cref="Core.GameId"/> is a label, not authorization (see <see cref="IdentifiedGame"/>).
+    /// </summary>
+    public NormalizedSnapshot WithGameId(GameId gameId)
+    {
+        ArgumentNullException.ThrowIfNull(gameId);
+        return new NormalizedSnapshot
+        {
+            IntegrationId = IntegrationId,
+            GameId = gameId,
+            SourceProcessId = SourceProcessId,
+            SourceProcessStartUtc = SourceProcessStartUtc,
+            GameFrame = GameFrame,
+            ReceivedUtc = ReceivedUtc,
+            Map = Map,
+            Age = Age,
+            EventPlaying = EventPlaying,
+            Loading = Loading,
+            Life = Life,
+            MaxLife = MaxLife,
+            Rupees = Rupees,
+            Flags = Flags,
+        };
+    }
 }

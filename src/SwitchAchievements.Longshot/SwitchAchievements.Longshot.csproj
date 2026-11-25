@@ -4,6 +4,16 @@
     <ProjectReference Include="..\SwitchAchievements.Core\SwitchAchievements.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- WMI Win32_Process.CommandLine for crash-reporter helper classification (M5.6 R1).
+         Windows-specific, so it lives here and never in Core. -->
+    <PackageReference Include="System.Management" Version="10.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SwitchAchievements.Tests" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

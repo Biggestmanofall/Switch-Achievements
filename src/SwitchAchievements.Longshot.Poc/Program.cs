@@ -100,6 +100,12 @@ public static class Program
         Console.WriteLine("  --wait            Keep polling (detect).");
     }
 
+/// <summary>
+    /// Shared crash-reporter helper classification (M5.6 R1): the same rule the
+    /// monitoring service applies, so the CLI never treats a helper as the game.
+    /// </summary>
+    private static readonly LongshotProcessRoleClassifier HelperClassifier = new(new WmiCommandLineReader());
+
 private static async Task<int> DetectAsync(Dictionary<string, string> o, Action<string> log)
     {
         bool wait = o.ContainsKey("wait");
@@ -119,7 +125,7 @@ private static async Task<int> DetectAsync(Dictionary<string, string> o, Action<
             if (diagnose)
                 bridge = await new NamedPipeBridgeProbe().ProbeAsync(pipe);
 
-            var result = LongshotProcessSelector.Select(all, bridge, verifiedOwnership: null);
+            var result = LongshotProcessSelector.Select(all, bridge, verifiedOwnership: null, HelperClassifier);
 
             if (diagnose)
             {
@@ -174,7 +180,7 @@ private static async Task<int> DetectAsync(Dictionary<string, string> o, Action<
     private static GameProcess? SelectGameSynchronous()
     {
         var all = new WindowsProcessProvider().GetProcesses("longshot");
-        var result = LongshotProcessSelector.Select(all, bridge: null, verifiedOwnership: null);
+        var result = LongshotProcessSelector.Select(all, bridge: null, verifiedOwnership: null, HelperClassifier);
         return result.Selection == ProcessSelectionStatus.Unique && result.SelectedProcess is not null
             ? ProcessDetection.ToGameProcess(result.SelectedProcess)
             : null;
