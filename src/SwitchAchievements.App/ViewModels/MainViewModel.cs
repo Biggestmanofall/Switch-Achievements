@@ -16,13 +16,17 @@ public sealed class MainViewModel : ObservableObject
     private string _integrationStatus = "Not connected";
     private MonitoringState _monitoringState = MonitoringState.Stopped;
 
-    public MainViewModel(SettingsService settings)
+    public MainViewModel(SettingsService settings, DashboardViewModel? dashboard = null)
     {
         Settings = settings;
+        Dashboard = dashboard;
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke());
     }
 
     public SettingsService Settings { get; }
+
+    /// <summary>Live monitoring dashboard (M5.7 Task 2); owned and disposed by App, not by this view model.</summary>
+    public DashboardViewModel? Dashboard { get; }
 
     public string ApplicationName => "Switch Achievements";
 

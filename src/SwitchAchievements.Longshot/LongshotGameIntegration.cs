@@ -25,16 +25,47 @@ public sealed class LongshotGameIntegration : IGameIntegration
     private const int RequestTimeoutSeconds = 10;
 
     private readonly string _pipeName;
+    private readonly LongshotProcessRoleClassifier _classifier;
 
+    private readonly INamedPipeDirectory _pipeDirectory;
     private volatile ControlBridgeClient? _client;
     private GameProcessInfo? _process;
     private long _nextRequestId;
     private volatile bool _disposed;
+    private string? _lastClassificationSummary;
 
-    public LongshotGameIntegration(string pipeName = ControlBridgeClient.DefaultPipeName)
+    /// <param name="pipeName">Control-bridge pipe name.</param>
+    /// <param name="commandLineReader">
+    /// Reader used to recognise crash-reporter helpers; defaults to WMI
+    /// (<see cref="WmiCommandLineReader"/>). Injected by tests.
+    /// </param>
+    /// <param name="pipeDirectory">
+    /// Answers whether the bridge's pipe exists (M5.8.1); defaults to listing the
+    /// Windows pipe namespace (<see cref="WindowsNamedPipeDirectory"/>). Injected by tests.
+    /// </param>
+    public LongshotGameIntegration(
+        string pipeName = ControlBridgeClient.DefaultPipeName,
+        ICommandLineReader? commandLineReader = null,
+        INamedPipeDirectory? pipeDirectory = null)
     {
         _pipeName = pipeName;
+        _classifier = new LongshotProcessRoleClassifier(commandLineReader ?? new WmiCommandLineReader());
+        _pipeDirectory = pipeDirectory ?? new WindowsNamedPipeDirectory();
     }
+
+    /// <summary>
+    /// Whether the control bridge's pipe exists, checked without connecting (M5.8.1).
+    /// Longshot creates it at startup only when <c>HOS_CONTROL</c> names it, and the
+    /// game process owns it. The pipe name is machine-wide, so <paramref name="process"/>
+    /// is not used: existence is not proof of ownership; the connection and the
+    /// per-snapshot process fingerprint check remain the guard.
+    /// </summary>
+    public EndpointAvailability CheckEndpoint(GameProcessInfo process) => _pipeDirectory.Exists(_pipeName) switch
+    {
+        true => EndpointAvailability.Available,
+        false => EndpointAvailability.Absent,
+        null => EndpointAvailability.Unknown,
+    };
 
     public string Id => "longshot";
 
@@ -66,6 +97,36 @@ public sealed class LongshotGameIntegration : IGameIntegration
             return false;
 
         return string.Equals(Path.GetFileName(directory), "bin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Keeps the <c>bin\longshot.exe</c> processes (<see cref="CanHandle"/>) and
+    /// then removes positively identified crash-reporter helpers
+    /// (<see cref="LongshotProcessRoleClassifier"/>). Unreadable or unrecognised
+    /// processes are retained, so the selection policy stays conservative.
+    /// A classification summary (PIDs and roles only, never command lines) is
+    /// reported through <see cref="StatusChanged"/> when it changes.
+    /// </summary>
+    public IReadOnlyList<GameProcessInfo> SelectCandidates(IReadOnlyList<GameProcessInfo> processes)
+    {
+        var binaries = new List<GameProcessInfo>(processes.Count);
+        foreach (var process in processes)
+        {
+            if (CanHandle(process))
+                binaries.Add(process);
+        }
+
+        var selection = _classifier.SelectCandidates(binaries);
+
+        var summary = selection.Diagnostics.Count == 0 ? null : string.Join("; ", selection.Diagnostics);
+        if (!string.Equals(summary, _lastClassificationSummary, StringComparison.Ordinal))
+        {
+            _lastClassificationSummary = summary;
+            if (summary is not null)
+                StatusChanged?.Invoke("process classification: " + summary);
+        }
+
+        return selection.Candidates;
     }
 
     public async Task ConnectAsync(GameProcessInfo process, CancellationToken ct = default)

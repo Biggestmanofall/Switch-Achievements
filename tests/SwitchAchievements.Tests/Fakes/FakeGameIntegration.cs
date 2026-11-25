@@ -13,6 +13,34 @@ public sealed class FakeGameIntegration : IGameIntegration
     public string PipeName { get; init; } = "longshot_control";
 
     public Func<GameProcessInfo, bool>? CanHandleOverride { get; set; }
+
+    /// <summary>
+    /// Replaces the list-level candidate filter (for example with the real
+    /// Longshot helper classifier). Null keeps the interface's default behaviour.
+    /// </summary>
+    public Func<IReadOnlyList<GameProcessInfo>, IReadOnlyList<GameProcessInfo>>? SelectCandidatesOverride { get; set; }
+
+    public int SelectCandidatesCount { get; private set; }
+
+    /// <summary>
+    /// M5.8.1: the endpoint availability to report. Null keeps the interface's default
+    /// (<see cref="EndpointAvailability.Unknown"/>), so existing tests are unaffected.
+    /// </summary>
+    public Func<GameProcessInfo, EndpointAvailability>? EndpointAvailabilityOverride { get; set; }
+
+    private int _checkEndpointCount;
+
+    /// <summary>M5.8.1: how many times the endpoint was checked.</summary>
+    public int CheckEndpointCount => Volatile.Read(ref _checkEndpointCount);
+
+    public EndpointAvailability CheckEndpoint(GameProcessInfo process)
+    {
+        Interlocked.Increment(ref _checkEndpointCount);
+        return EndpointAvailabilityOverride?.Invoke(process) ?? EndpointAvailability.Unknown;
+    }
+
+    /// <summary>Every process ConnectAsync was called with, in order.</summary>
+    public List<GameProcessInfo> ConnectedProcesses { get; } = new();
     public Func<GameProcessInfo, CancellationToken, Task>? OnConnect { get; set; }
     public Exception? SubscribeException { get; set; }
 
@@ -36,10 +64,19 @@ public sealed class FakeGameIntegration : IGameIntegration
             && path.EndsWith(GameBinarySuffix, StringComparison.OrdinalIgnoreCase);
     }
 
+    public IReadOnlyList<GameProcessInfo> SelectCandidates(IReadOnlyList<GameProcessInfo> processes)
+    {
+        SelectCandidatesCount++;
+        return SelectCandidatesOverride is not null
+            ? SelectCandidatesOverride(processes)
+            : processes.Where(CanHandle).ToList();
+    }
+
     public async Task ConnectAsync(GameProcessInfo process, CancellationToken ct = default)
     {
         ConnectCount++;
         LastConnectedProcess = process;
+        lock (ConnectedProcesses) { ConnectedProcesses.Add(process); }
 
         if (OnConnect is not null)
             await OnConnect(process, ct).ConfigureAwait(false);

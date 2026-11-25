@@ -26,10 +26,17 @@ public static class LongshotProcessSelector
             && string.Equals(Path.GetFileName(Path.GetDirectoryName(executablePath)), "bin", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <param name="classifier">
+    /// When supplied, positively identified crash-reporter helpers are removed
+    /// from the game candidates first (the same shared rule the monitoring
+    /// service uses via <see cref="LongshotGameIntegration.SelectCandidates"/>).
+    /// When null, behaviour is unchanged: every game-binary path is a candidate.
+    /// </param>
     public static ProcessSelectionResult Select(
         IReadOnlyList<GameProcessInfo> processes,
         BridgeProbeResult? bridge,
-        VerifiedOwnership? verifiedOwnership = null)
+        VerifiedOwnership? verifiedOwnership = null,
+        LongshotProcessRoleClassifier? classifier = null)
     {
         var manifest = new List<string>();
 
@@ -48,7 +55,14 @@ public static class LongshotProcessSelector
                 $"experimental pipe server pid={bridge.ExperimentalServerProcessId} (diagnostic only; not used for selection)");
         }
 
-        var candidates = processes.Where(p => IsGameBinaryPath(p.ExecutablePath)).ToList();
+        IReadOnlyList<GameProcessInfo> candidates = processes.Where(p => IsGameBinaryPath(p.ExecutablePath)).ToList();
+        if (classifier is not null)
+        {
+            var classified = classifier.SelectCandidates(candidates);
+            manifest.AddRange(classified.Diagnostics);
+            candidates = classified.Candidates;
+        }
+
         var result = ProcessSelector.Select(candidates, bridge, verifiedOwnership);
 
         manifest.AddRange(result.Diagnostics);

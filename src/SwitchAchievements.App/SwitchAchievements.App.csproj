@@ -15,4 +15,13 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Developer-owned supported-game catalog (M5.6.3), embedded so it travels with the
+         application and is not user-editable. Resource names are exactly the forward-slash
+         paths under the repository's catalog/ folder, e.g. "catalog/catalog.json":
+         %(RecursiveDir) uses backslashes on Windows, so they are replaced at build time. -->
+    <EmbeddedResource Include="..\..\catalog\**\*.json"
+                      LogicalName="catalog/$([System.String]::Copy('%(RecursiveDir)').Replace('\', '/'))%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

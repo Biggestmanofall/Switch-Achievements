@@ -58,10 +58,22 @@ public class MonitoringServicePipelineTests
         provider.Processes = new[] { Game(100) };
         integration.OnConnect = (_, _) => throw new TimeoutException("pipe connect timed out");
 
-        await service.StartAsync();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        Assert.True(integration.ConnectCount >= 1);
-        await service.StopAsync();
+        // Reconnecting lasts only until rediscovery retries the connect, so observe the
+        // transition itself (subscribed before start) instead of sampling the state.
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            await service.StartAsync();
+            var connecting = await observer.WaitForAsync(MonitoringState.Connecting, after: 0);
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: connecting.Index + 1);
+
+            Assert.Equal(connecting.Index + 1, reconnecting.Index); // the timed-out connect led straight to Reconnecting
+            Assert.True(integration.ConnectCount >= 1);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -136,12 +148,21 @@ public class MonitoringServicePipelineTests
         await service.StartAsync();
         await WaitForStateAsync(service, MonitoringState.Monitoring);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
+        using var observer = new StateTransitionObserver(service); // before the disconnect: nothing can be missed
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index); // the disconnect's own transition comes first
+            await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1);
 
-        Assert.Equal(2, integration.ConnectCount);
-        await service.StopAsync();
+            Assert.Equal(2, integration.ConnectCount);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -152,16 +173,25 @@ public class MonitoringServicePipelineTests
         await service.StartAsync();
         await WaitForStateAsync(service, MonitoringState.Monitoring);
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            for (var cycle = 1; cycle <= 2; cycle++)
+            {
+                // Disconnect only once the previous reconnect has re-armed the signal (Monitoring observed).
+                var mark = observer.Count;
+                integration.RaiseDisconnected();
+                var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+                Assert.Equal(mark, reconnecting.Index);
+                await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1);
+            }
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        await WaitForStateAsync(service, MonitoringState.Monitoring);
-
-        Assert.Equal(3, integration.ConnectCount);
-        await service.StopAsync();
+            Assert.Equal(3, integration.ConnectCount);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 
     [Fact]
@@ -325,17 +355,28 @@ public class MonitoringServicePipelineTests
         await WaitForSessionAsync(service, s => s.Latest?.Rupees == 5);
         var sessionId = service.Session.Id;
 
-        integration.RaiseDisconnected();
-        await WaitForStateAsync(service, MonitoringState.Reconnecting);
-        Assert.NotNull(service.Session.Id); // disconnect does not end the session
+        using var observer = new StateTransitionObserver(service);
+        try
+        {
+            var mark = observer.Count;
+            integration.RaiseDisconnected();
+            var reconnecting = await observer.WaitForAsync(MonitoringState.Reconnecting, after: mark);
+            Assert.Equal(mark, reconnecting.Index);
+            Assert.NotNull(reconnecting.Session.Id); // disconnect does not end the session (as of the transition)
+            Assert.Equal(sessionId, reconnecting.Session.Id);
 
-        await WaitForStateAsync(service, MonitoringState.Monitoring); // same-fingerprint reconnect
+            await observer.WaitForAsync(MonitoringState.Monitoring, after: reconnecting.Index + 1); // same-fingerprint reconnect
 
-        integration.RaiseSnapshot(TestSnapshot.Create(fingerprint, rupees: 6));
-        await WaitForSessionAsync(service, s => s.Latest?.Rupees == 6);
-        Assert.Equal(sessionId, service.Session.Id); // reconnect preserved the session
+            integration.RaiseSnapshot(TestSnapshot.Create(fingerprint, rupees: 6));
+            await WaitForSessionAsync(service, s => s.Latest?.Rupees == 6);
+            Assert.Equal(sessionId, service.Session.Id); // reconnect preserved the session
 
-        await service.StopAsync();
-        Assert.Equal(MonitoringState.Stopped, service.State);
+            await service.StopAsync();
+            Assert.Equal(MonitoringState.Stopped, service.State);
+        }
+        finally
+        {
+            await service.StopAsync();
+        }
     }
 }

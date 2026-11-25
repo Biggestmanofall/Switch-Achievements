@@ -24,14 +24,34 @@ public sealed class SettingsService
         Current = Load();
     }
 
+    /// <summary>
+    /// The active settings. Replaced by <see cref="Save"/>, so readers that consult it
+    /// when they act (for example the main window's close handling) see saved changes
+    /// immediately, without a restart.
+    /// </summary>
     public AppSettings Current { get; private set; }
 
+    /// <summary>
+    /// Makes <paramref name="settings"/> the active settings and persists them atomically.
+    /// The active settings change even if writing the file fails (the failure is logged),
+    /// so the user's choice applies for this session.
+    /// </summary>
     public void Save(AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        // A private copy: later mutation of the caller's instance cannot change the active settings.
+        Current = new AppSettings
+        {
+            ShowWindowOnLaunch = settings.ShowWindowOnLaunch,
+            MinimizeToTrayOnClose = settings.MinimizeToTrayOnClose,
+            StartWithWindows = settings.StartWithWindows,
+        };
+
         try
         {
             Directory.CreateDirectory(_directory);
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(Current, new JsonSerializerOptions { WriteIndented = true });
 
             var tempPath = _filePath + ".tmp";
             File.WriteAllText(tempPath, json);

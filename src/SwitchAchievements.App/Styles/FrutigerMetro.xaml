@@ -1,0 +1,301 @@
+<!--
+    Red Frutiger Metro (M5.7 Task 3, refined in 3.1): vivid scarlet and crimson over a
+    near-black base, glossy surfaces, and the geometric decoration library (MetroDecor).
+    Used by the main window only; Theme.xaml (shared with the Settings window) is unchanged.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/SwitchAchievements.App;component/Styles/MetroDecor.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ============ Typography ============ -->
+    <FontFamily x:Key="MetroFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="MetroDisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="MetroIconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!-- ============ Palette ============ -->
+    <Color x:Key="MetroRedLight">#FF3A4E</Color>
+    <Color x:Key="MetroRed">#F00016</Color>
+    <Color x:Key="MetroRedDeep">#8A000E</Color>
+
+    <SolidColorBrush x:Key="MetroTextPrimary" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="MetroTextSecondary" Color="#FFD6DA"/>
+    <SolidColorBrush x:Key="MetroTextMuted" Color="#E0A8AF"/>
+    <SolidColorBrush x:Key="MetroAccentText" Color="#FF5A6B"/>
+
+    <!-- Near-black red base; the MetroBackdrop composition supplies the vivid red. -->
+    <LinearGradientBrush x:Key="MetroWindowBackground" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#1C0509" Offset="0"/>
+        <GradientStop Color="#100508" Offset="0.55"/>
+        <GradientStop Color="#1A0408" Offset="1"/>
+    </LinearGradientBrush>
+
+    <RadialGradientBrush x:Key="MetroAmbientRed" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#66E02536" Offset="0"/>
+        <GradientStop Color="#00E02536" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="MetroAmbientRose" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#40FF7A84" Offset="0"/>
+        <GradientStop Color="#00FF7A84" Offset="1"/>
+    </RadialGradientBrush>
+
+    <!-- Hero: vivid glossy scarlet into deep crimson. -->
+    <LinearGradientBrush x:Key="MetroHeroBackground" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#FF3A4E" Offset="0"/>
+        <GradientStop Color="#FF001E" Offset="0.3"/>
+        <GradientStop Color="#D80016" Offset="0.62"/>
+        <GradientStop Color="#8A000E" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MetroGloss" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#73FFFFFF" Offset="0"/>
+        <GradientStop Color="#1FFFFFFF" Offset="0.7"/>
+        <GradientStop Color="#00FFFFFF" Offset="1"/>
+    </LinearGradientBrush>
+    <RadialGradientBrush x:Key="MetroBubble" GradientOrigin="0.35,0.3">
+        <GradientStop Color="#59FFFFFF" Offset="0"/>
+        <GradientStop Color="#14FFFFFF" Offset="0.6"/>
+        <GradientStop Color="#00FFFFFF" Offset="1"/>
+    </RadialGradientBrush>
+
+    <!-- Tiles: dark smoked glass (the busy backdrop shows through only faintly, so text
+         stays readable), with a bright red rim. -->
+    <LinearGradientBrush x:Key="MetroGlassBackground" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#E62A0810" Offset="0"/>
+        <GradientStop Color="#E6180509" Offset="0.55"/>
+        <GradientStop Color="#F0120407" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MetroGlassBorder" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF3A4E" Offset="0"/>
+        <GradientStop Color="#99B80012" Offset="0.5"/>
+        <GradientStop Color="#40B80012" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MetroGlassSheen" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#26FFFFFF" Offset="0"/>
+        <GradientStop Color="#00FFFFFF" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MetroIconWell" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF4A5C" Offset="0"/>
+        <GradientStop Color="#FF001E" Offset="0.5"/>
+        <GradientStop Color="#B80012" Offset="1"/>
+    </LinearGradientBrush>
+
+    <DropShadowEffect x:Key="MetroSoftShadow" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.35" Color="#1A0006"/>
+    <DropShadowEffect x:Key="MetroHeroShadow" BlurRadius="36" ShadowDepth="10" Direction="270" Opacity="0.45" Color="#3A0009"/>
+
+    <!-- ============ Text styles ============ -->
+    <Style x:Key="MetroEyebrow" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MetroFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource MetroTextMuted}"/>
+    </Style>
+
+    <Style x:Key="MetroTileValue" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MetroDisplayFont}"/>
+        <Setter Property="FontSize" Value="22"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource MetroTextPrimary}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Style.Triggers>
+            <!-- A soft fade whenever the bound value changes (bindings set NotifyOnTargetUpdated). -->
+            <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.35" To="1" Duration="0:0:0.35"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="MetroTileCaption" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MetroFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{StaticResource MetroTextSecondary}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+
+    <Style x:Key="MetroIcon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MetroIconFont}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ============ Status chip (hero) ============ -->
+    <Style x:Key="MetroChip" TargetType="Border">
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="Background" Value="#33FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#59FFFFFF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+
+    <!-- ============ Tile ============
+         Header = title, Tag = icon glyph, Content = the tile body. -->
+    <Style x:Key="MetroTile" TargetType="HeaderedContentControl">
+        <Setter Property="Margin" Value="8"/>
+        <Setter Property="Foreground" Value="{StaticResource MetroTextPrimary}"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <TranslateTransform/>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="HeaderedContentControl">
+                    <Grid>
+                        <Border x:Name="Glow" CornerRadius="20" Background="#FF001E" Opacity="0" Margin="2">
+                            <Border.Effect>
+                                <BlurEffect Radius="18"/>
+                            </Border.Effect>
+                        </Border>
+                        <!-- Shadow, then the body. The body has no children or effect, so it
+                             doubles as the rounded clip mask for the decoration layer. -->
+                        <Border CornerRadius="20" Background="{StaticResource MetroGlassBackground}" Effect="{StaticResource MetroSoftShadow}"/>
+                        <Border x:Name="Body" CornerRadius="20" Background="{StaticResource MetroGlassBackground}"
+                                BorderBrush="{StaticResource MetroGlassBorder}" BorderThickness="1.5"/>
+
+                        <!-- Corner decoration (behind content, clipped to the tile): a cropped
+                             ring, a small star, and a halftone corner. -->
+                        <Grid IsHitTestVisible="False" ClipToBounds="True">
+                            <Grid.OpacityMask>
+                                <VisualBrush Visual="{Binding ElementName=Body}"/>
+                            </Grid.OpacityMask>
+                            <Ellipse Width="150" Height="150" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-72,-62,0"
+                                     Stroke="{StaticResource DecorRedBrush}" StrokeThickness="14" Opacity="0.42"/>
+                            <Ellipse Width="96" Height="96" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-45,-35,0"
+                                     Stroke="White" StrokeThickness="2" Opacity="0.16"/>
+                            <ContentControl Style="{StaticResource OutlineStar}" Width="16" Height="16" Tag="1.6" BorderBrush="{StaticResource DecorRedBrush}"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,18,18,0" Opacity="0.85"/>
+                            <Rectangle Width="170" Height="120" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-30,-30"
+                                       Fill="{StaticResource HalftoneRedSmall}" OpacityMask="{StaticResource HalftoneFade}" Opacity="0.4"/>
+                        </Grid>
+
+                        <Border CornerRadius="20">
+                            <Grid>
+                                <!-- Top sheen -->
+                                <Border CornerRadius="19,19,40,40" Height="46" VerticalAlignment="Top"
+                                        Background="{StaticResource MetroGlassSheen}" IsHitTestVisible="False"/>
+                                <Grid Margin="18,16,18,18">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="30" Height="30" CornerRadius="10" Background="{StaticResource MetroIconWell}"
+                                                BorderBrush="#99FFFFFF" BorderThickness="1">
+                                            <Grid>
+                                                <Border CornerRadius="10,10,4,4" Height="14" VerticalAlignment="Top" Background="#40FFFFFF"/>
+                                                <TextBlock Text="{TemplateBinding Tag}" FontSize="15" Style="{StaticResource MetroIcon}"/>
+                                            </Grid>
+                                        </Border>
+                                        <ContentPresenter ContentSource="Header" VerticalAlignment="Center" Margin="10,0,0,0"
+                                                          TextElement.FontFamily="{StaticResource MetroFont}"
+                                                          TextElement.FontSize="13" TextElement.FontWeight="SemiBold"
+                                                          TextElement.Foreground="{StaticResource MetroTextSecondary}"/>
+                                    </StackPanel>
+                                    <ContentPresenter Grid.Row="1" Margin="0,8,0,0"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0.28" Duration="0:0:0.2"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-3" Duration="0:0:0.2">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.3">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Tiles showing gameplay values dim (with a text badge) while gameplay data is stale. -->
+    <Style x:Key="MetroGameplayTile" TargetType="HeaderedContentControl" BasedOn="{StaticResource MetroTile}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Dashboard.IsStale}" Value="True">
+                <Setter Property="Opacity" Value="0.62"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ============ Glossy pill button ============ -->
+    <Style x:Key="MetroGlossButton" TargetType="Button">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontFamily" Value="{StaticResource MetroFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border x:Name="Body" CornerRadius="17" Background="{StaticResource MetroIconWell}"
+                                BorderBrush="#80FFFFFF" BorderThickness="1" Effect="{StaticResource MetroSoftShadow}"/>
+                        <Border CornerRadius="16,16,6,6" Margin="1,1,1,0" Height="15" VerticalAlignment="Top" Background="#4DFFFFFF"/>
+                        <Border x:Name="Hover" CornerRadius="17" Background="#FFFFFF" Opacity="0"/>
+                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.14" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Body" Property="Opacity" Value="0.85"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Body" Property="BorderBrush" Value="White"/>
+                            <Setter TargetName="Body" Property="BorderThickness" Value="2"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <sys:String x:Key="Dash">—</sys:String>
+</ResourceDictionary>

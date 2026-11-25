@@ -11,4 +11,10 @@ public sealed class AppSettings
 
     /// <summary>Minimize to the system tray when the main window is closed.</summary>
     public bool MinimizeToTrayOnClose { get; set; } = true;
+
+    /// <summary>
+    /// Start the application when the user signs in to Windows (M5.7 Task 4). Off by
+    /// default; a config file written before this setting existed loads as false.
+    /// </summary>
+    public bool StartWithWindows { get; set; } = false;
 }

@@ -28,6 +28,29 @@ public interface IGameIntegration : IAsyncDisposable
     /// </summary>
     bool CanHandle(GameProcessInfo process);
 
+    /// <summary>
+    /// Reduces a list of operating-system processes to the game candidates this
+    /// integration could connect to. The result is passed unchanged to the
+    /// selection policy (<see cref="ProcessSelector"/>), so it must only ever
+    /// remove processes positively known not to be the game; anything uncertain
+    /// must be retained so the policy can report it as ambiguous.
+    ///
+    /// The default keeps every process <see cref="CanHandle"/> accepts.
+    /// Integrations override it when per-process path checks are not enough
+    /// (for example, to exclude a helper process that runs the same executable).
+    /// </summary>
+    IReadOnlyList<GameProcessInfo> SelectCandidates(IReadOnlyList<GameProcessInfo> processes)
+        => processes.Where(CanHandle).ToList();
+
+    /// <summary>
+    /// Whether this integration's endpoint for <paramref name="process"/> exists right
+    /// now, checked without connecting (M5.8.1). Must not throw and must not block for
+    /// long. The default, <see cref="EndpointAvailability.Unknown"/>, means "connect as
+    /// usual"; only <see cref="EndpointAvailability.Absent"/> lets the monitoring loop
+    /// skip a connection attempt.
+    /// </summary>
+    EndpointAvailability CheckEndpoint(GameProcessInfo process) => EndpointAvailability.Unknown;
+
     /// <summary>Connect to the game and prepare the snapshot stream.</summary>
     Task ConnectAsync(GameProcessInfo process, CancellationToken ct);
 
